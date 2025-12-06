@@ -1,49 +1,70 @@
-# Installation Guide
+# 📥 Installation Guide
 
-## Quick Start (Chrome Extension)
+## ⚠️ IMPORTANT: Read This First
 
-Follow these simple steps to install and use the Gemini Watermark Remover extension:
+This extension includes a large AI model (\~200MB). Because of this, **please do not use the "Download ZIP" button** on GitHub.
 
-### Step 1: Extract the Files
+Using "Download ZIP" will fail to download the AI model correctly (you will get a tiny 1KB file instead of the real model), and the extension will not work.
 
-1. Download the `gemini-watermark-remover.zip` file
-2. Extract it to a folder on your computer (e.g., `Documents/gemini-watermark-remover`)
+**Please use the `git clone` method described below.**
 
-### Step 2: Load the Extension in Chrome
+-----
 
-1. Open **Google Chrome**
-2. Navigate to `chrome://extensions/` (or go to Menu → Extensions → Manage Extensions)
-3. Enable **Developer mode** by toggling the switch in the top-right corner
-4. Click the **"Load unpacked"** button
-5. Select the `gemini-watermark-remover` folder you extracted in Step 1
-6. The extension icon should now appear in your Chrome toolbar
+## Step 1: Get the Files (The Right Way)
 
-### Step 3: Use the Extension
+You need to use **Git** to download this project. If you don't have Git installed, [download it here](https://www.google.com/search?q=https://git-scm.com/downloads) and install it (keep all default settings).
 
-1. Click the **Gemini Watermark Remover** icon in your toolbar
-2. A new tab will open with the application interface
-3. Drag and drop an image with a Gemini watermark, or click to browse
-4. Wait for the AI to process the image (progress bar will show status)
-5. Once complete, use the before/after slider to compare results
-6. Click **"Download Image"** to save the cleaned image
+1.  Open your **Terminal** (Command Prompt or PowerShell on Windows, Terminal on Mac/Linux).
+2.  Run the following command to enable Large File Storage support:
+    ```bash
+    git lfs install
+    ```
+3.  Run the command to download the project and the AI model:
+    ```bash
+    git clone https://github.com/dinoBOLT/Gemini-Watermark-Remover.git
+    ```
+    *(Wait for the download to finish. It might take a minute depending on your internet connection).*
+
+-----
+
+## Step 2: Load the Extension in Chrome
+
+Once the download is complete, you need to load the folder into your browser.
+
+1.  Open **Google Chrome**.
+2.  Type `chrome://extensions/` in the address bar and press Enter.
+3.  In the top-right corner, make sure **Developer mode** is turned **ON**.
+4.  Click the **Load unpacked** button (top-left).
+5.  Select the folder `Gemini-Watermark-Remover` that you just cloned.
+      * *Note: Make sure you select the folder that contains the `manifest.json` file.*
+
+The extension icon should now appear in your browser toolbar\! 🎉
+
+-----
+
+## Step 3: Verify the Installation
+
+To make sure the AI model was downloaded correctly:
+
+1.  Open the folder on your computer.
+2.  Go to `src` -\> `assets`.
+3.  Check the file named **`lama_fp32.onnx`**.
+4.  **It should be around 198 MB.**
+      * *If it is only 1 KB (or very small), it means Git LFS was not installed or you used the ZIP button.*
+      * *Solution: Run `git lfs pull` inside the folder or re-do Step 1.*
+
+-----
 
 ## Troubleshooting
 
-### Extension doesn't load
+**Error: "Failed to load AI model"**
 
-- **Error**: "Could not load icon"
-  - **Solution**: Make sure you extracted the ZIP file completely. The `icons/` folder must contain `icon16.png`, `icon48.png`, and `icon128.png`.
+  * Check your internet connection.
+  * Ensure the `lama_fp32.onnx` file in `src/assets/` is \~198 MB.
 
-- **Error**: "Manifest file is missing or unreadable"
-  - **Solution**: Ensure you selected the correct folder (the one containing `manifest.json`, not a parent folder).
+**Error: "Manifest file is missing or unreadable"**
 
-### Processing fails
-
-- **Error**: "Failed to load AI model"
-  - **Solution**: Check your internet connection for the first use. The model (199 MB) needs to be loaded once and will be cached.
-
-- **Error**: "File size exceeds limit"
-  - **Solution**: The maximum file size is 50 MB. Try compressing your image first.
+  * You probably selected the wrong folder. When clicking "Load unpacked", make sure you are selecting the folder directly containing the `manifest.json` file.
 
 ### Performance issues
 
