@@ -1,87 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Remove Gemini watermarks locally with AI - 100% privacy-focused">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Remove Gemini watermarks locally with AI - 100% privacy-focused"
+    />
     <title>Gemini Watermark Remover - Local AI Processing</title>
-    
+
     <!-- ONNX Runtime -->
     <script src="src/lib/ort.min.js"></script>
-    
+
+    <!-- JSZip for batch download -->
+    <script src="src/lib/jszip.min.js"></script>
+
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1 class="title">
-                <span class="icon-sparkle">✨</span>
-                Gemini Watermark Remover
-            </h1>
-            <p class="subtitle">
-                100% Local Processing • Privacy First • Powered by AI
-            </p>
-        </header>
+      <!-- Header -->
+      <header class="header">
+        <h1 class="title">
+          <span class="icon-sparkle">✨</span>
+          Gemini Watermark Remover
+        </h1>
+        <p class="subtitle">
+          100% Local Processing • Privacy First • Powered by AI
+        </p>
+      </header>
 
-        <!-- Drop Zone -->
-        <div class="drop-zone" id="dropZone">
-            <span class="drop-icon">📂</span>
-            <p class="drop-text">
-                Drop your image here<br>
-                <span class="drop-subtext">or click to browse</span>
-            </p>
-            <input type="file" id="fileInput" accept="image/*" aria-label="Select image file">
+      <!-- Drop Zone -->
+      <div class="drop-zone" id="dropZone">
+        <span class="drop-icon">📂</span>
+        <p class="drop-text">
+          Drop your images here<br />
+          <span class="drop-subtext">or click to browse (supports multiple files)</span>
+        </p>
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*"
+          multiple
+          aria-label="Select image files"
+        />
+      </div>
+
+      <!-- Progress Section (Single Image) -->
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+
+      <!-- Batch Status Section -->
+      <div class="batch-status" id="batchStatus">
+        <div class="batch-header">
+          <span class="batch-count" id="batchCount">Processing 0 of 0 images</span>
+          <button class="btn btn-danger btn-sm" id="cancelBatch">Cancel</button>
+        </div>
+        <div class="batch-items" id="batchItems"></div>
+      </div>
+
+      <!-- Log Area -->
+      <div class="log-area" id="logArea"></div>
+
+      <!-- Result Section -->
+      <div class="result-area" id="resultArea">
+        <h2 class="result-title">Cleaned Image</h2>
+
+        <!-- Main Preview -->
+        <div class="preview-container">
+          <img id="previewImg" class="preview-img" alt="Processed image" />
         </div>
 
-        <!-- Progress Section -->
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar" id="progressBar"></div>
-            <div class="progress-text" id="progressText">0%</div>
+        <!-- Comparison Slider -->
+        <div class="comparison-container" id="comparisonContainer"></div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <a id="downloadLink" class="btn btn-primary" download>
+            <span class="btn-icon">⬇️</span>
+            Download Image
+          </a>
+          <button id="downloadAllBtn" class="btn btn-primary" style="display: none;">
+            <span class="btn-icon">📦</span>
+            Download All as ZIP
+          </button>
+          <button id="resetBtn" class="btn btn-secondary">
+            <span class="btn-icon">🔄</span>
+            Process Another
+          </button>
         </div>
+      </div>
 
-        <!-- Log Area -->
-        <div class="log-area" id="logArea"></div>
-
-        <!-- Result Section -->
-        <div class="result-area" id="resultArea">
-            <h2 class="result-title">Cleaned Image</h2>
-            
-            <!-- Main Preview -->
-            <div class="preview-container">
-                <img id="previewImg" class="preview-img" alt="Processed image">
-            </div>
-
-            <!-- Comparison Slider -->
-            <div class="comparison-container" id="comparisonContainer"></div>
-
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <a id="downloadLink" class="btn btn-primary" download>
-                    <span class="btn-icon">⬇️</span>
-                    Download Image
-                </a>
-                <button id="resetBtn" class="btn btn-secondary">
-                    <span class="btn-icon">🔄</span>
-                    Process Another
-                </button>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <p class="footer-text">
-                Powered by <a href="https://github.com/advimman/lama" target="_blank" rel="noopener">LaMa AI</a> 
-                and <a href="https://onnxruntime.ai/" target="_blank" rel="noopener">ONNX Runtime</a>
-            </p>
-            <p class="footer-note">
-                Your images are processed entirely in your browser. No data is sent to any server.
-            </p>
-        </footer>
+      <!-- Footer -->
+      <footer class="footer">
+        <p class="footer-text">
+          Powered by
+          <a
+            href="https://github.com/advimman/lama"
+            target="_blank"
+            rel="noopener"
+            >LaMa AI</a
+          >
+          and
+          <a href="https://onnxruntime.ai/" target="_blank" rel="noopener"
+            >ONNX Runtime</a
+          >
+        </p>
+        <p class="footer-note">
+          Your images are processed entirely in your browser. No data is sent to
+          any server.
+        </p>
+      </footer>
     </div>
 
     <!-- Application Script (ES6 Module) -->
     <script type="module" src="src/js/app.js"></script>
-</body>
+  </body>
 </html>
