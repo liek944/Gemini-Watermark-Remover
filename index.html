@@ -47,6 +47,32 @@
         />
       </div>
 
+      <!-- Advanced Settings (Collapsible) -->
+      <details class="advanced-settings" id="advancedSettings">
+        <summary class="settings-toggle">
+          <span class="settings-icon">⚙️</span>
+          Advanced Settings
+          <span class="toggle-indicator">▼</span>
+        </summary>
+        <div class="settings-content">
+          <div class="setting-group">
+            <label for="featherSlider" class="setting-label">
+              Edge Blend
+              <span class="setting-value" id="featherValue">20px</span>
+            </label>
+            <input 
+              type="range" 
+              id="featherSlider" 
+              min="0" 
+              max="50" 
+              value="20" 
+              class="setting-slider"
+            />
+            <p class="setting-hint">Higher values create smoother transitions at the edge of the removed watermark area.</p>
+          </div>
+        </div>
+      </details>
+
       <!-- Progress Section (Single Image) -->
       <div class="progress-container" id="progressContainer">
         <div class="progress-bar" id="progressBar"></div>

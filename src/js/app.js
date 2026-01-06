@@ -21,6 +21,7 @@ class Application {
     this.currentImageBitmap = null;
     this.batchProcessor = null;
     this.batchResults = [];
+    this.featherSize = CONFIG.WATERMARK.FEATHER_SIZE;  // Edge blend setting
   }
 
   /**
@@ -55,8 +56,31 @@ class Application {
     
     // Setup batch-specific handlers
     this.setupBatchHandlers();
+    
+    // Setup advanced settings
+    this.setupAdvancedSettings();
 
     this.logger.info('Ready to process images (batch upload supported)');
+  }
+
+  /**
+   * Setup advanced settings handlers
+   */
+  setupAdvancedSettings() {
+    const featherSlider = document.getElementById('featherSlider');
+    const featherValue = document.getElementById('featherValue');
+    
+    if (featherSlider && featherValue) {
+      // Update display when slider changes
+      featherSlider.addEventListener('input', (e) => {
+        this.featherSize = parseInt(e.target.value, 10);
+        featherValue.textContent = `${this.featherSize}px`;
+      });
+      
+      // Initialize from config
+      featherSlider.value = this.featherSize;
+      featherValue.textContent = `${this.featherSize}px`;
+    }
   }
 
   /**
@@ -220,8 +244,8 @@ class Application {
       CONFIG.MODEL.INPUT_SIZE
     );
 
-    // Compose final image
-    const finalDataUrl = composeFinalImage(imageBitmap, processedImageData);
+    // Compose final image with feathered edges
+    const finalDataUrl = composeFinalImage(imageBitmap, processedImageData, this.featherSize);
 
     // Create original data URL
     const originalCanvas = document.createElement('canvas');
@@ -400,8 +424,8 @@ class Application {
       CONFIG.MODEL.INPUT_SIZE
     );
 
-    // Step 6: Compose final image
-    const finalDataUrl = composeFinalImage(imageBitmap, processedImageData);
+    // Step 6: Compose final image with feathered edges
+    const finalDataUrl = composeFinalImage(imageBitmap, processedImageData, this.featherSize);
     
     this.logger.info('Final image composed at original resolution');
 

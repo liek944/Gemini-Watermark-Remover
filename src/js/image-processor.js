@@ -91,15 +91,17 @@ export function postprocessImage(outputTensor, width, height) {
 
 /**
  * Compose final image by blending original and processed regions
- * Strategy: Only replace the watermark region, keep the rest pristine
+ * Strategy: Alpha blend with feathered edges for smooth transition
  * 
  * @param {ImageBitmap} originalBitmap - Original full-resolution image
  * @param {ImageData} processedImageData - Processed 512x512 image data
+ * @param {number} featherSize - Override feather size (optional, uses config default)
  * @returns {string} - Data URL of the final composed image
  */
-export function composeFinalImage(originalBitmap, processedImageData) {
+export function composeFinalImage(originalBitmap, processedImageData, featherSize = null) {
   const { width: origWidth, height: origHeight } = originalBitmap;
   const processedSize = CONFIG.MODEL.INPUT_SIZE;
+  const feather = featherSize !== null ? featherSize : CONFIG.WATERMARK.FEATHER_SIZE;
   
   // Create final canvas at original resolution
   const finalCanvas = document.createElement('canvas');
@@ -110,36 +112,130 @@ export function composeFinalImage(originalBitmap, processedImageData) {
   // Draw original image as base
   finalCtx.drawImage(originalBitmap, 0, 0);
   
-  // Create temporary canvas for processed image
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = processedSize;
-  tempCanvas.height = processedSize;
-  const tempCtx = tempCanvas.getContext('2d');
-  tempCtx.putImageData(processedImageData, 0, 0);
-  
-  // Calculate watermark regions for both original and processed images
+  // Get original image data for the watermark region (with feather padding)
   const origRegion = calculateWatermarkRegion(
     origWidth, 
     origHeight, 
     CONFIG.WATERMARK.EXTENDED_RATIO
   );
   
+  // Expand region to include feather zone
+  const expandedX = Math.max(0, origRegion.x - feather);
+  const expandedY = Math.max(0, origRegion.y - feather);
+  const expandedWidth = Math.min(origWidth - expandedX, origRegion.width + feather);
+  const expandedHeight = Math.min(origHeight - expandedY, origRegion.height + feather);
+  
+  // Create temporary canvas for processed image scaled to original region size
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = expandedWidth;
+  tempCanvas.height = expandedHeight;
+  const tempCtx = tempCanvas.getContext('2d');
+  
+  // Calculate source region from processed image
   const processedRegion = calculateWatermarkRegion(
     processedSize, 
     processedSize, 
     CONFIG.WATERMARK.EXTENDED_RATIO
   );
   
-  // Extract and blend only the watermark region
-  // This preserves the quality of the rest of the image
-  finalCtx.drawImage(
-    tempCanvas,
-    processedRegion.x, processedRegion.y, processedRegion.width, processedRegion.height,  // Source
-    origRegion.x, origRegion.y, origRegion.width, origRegion.height                        // Destination
+  // Scale factor for feather in processed space
+  const scaleX = processedRegion.width / origRegion.width;
+  const scaleY = processedRegion.height / origRegion.height;
+  const processedFeatherX = Math.floor(feather * scaleX);
+  const processedFeatherY = Math.floor(feather * scaleY);
+  
+  // Expanded processed region
+  const procExpandedX = Math.max(0, processedRegion.x - processedFeatherX);
+  const procExpandedY = Math.max(0, processedRegion.y - processedFeatherY);
+  const procExpandedWidth = Math.min(processedSize - procExpandedX, processedRegion.width + processedFeatherX);
+  const procExpandedHeight = Math.min(processedSize - procExpandedY, processedRegion.height + processedFeatherY);
+  
+  // Put processed image data into a canvas for scaling
+  const procCanvas = document.createElement('canvas');
+  procCanvas.width = processedSize;
+  procCanvas.height = processedSize;
+  const procCtx = procCanvas.getContext('2d');
+  procCtx.putImageData(processedImageData, 0, 0);
+  
+  // Draw scaled processed region to temp canvas
+  tempCtx.drawImage(
+    procCanvas,
+    procExpandedX, procExpandedY, procExpandedWidth, procExpandedHeight,
+    0, 0, expandedWidth, expandedHeight
   );
+  
+  // Get pixel data for blending
+  const originalImageData = finalCtx.getImageData(expandedX, expandedY, expandedWidth, expandedHeight);
+  const processedScaledData = tempCtx.getImageData(0, 0, expandedWidth, expandedHeight);
+  
+  // Create feathered blend
+  const blendedData = createFeatheredBlend(
+    originalImageData,
+    processedScaledData,
+    expandedWidth,
+    expandedHeight,
+    feather,
+    origRegion.x - expandedX,  // Offset to core region
+    origRegion.y - expandedY
+  );
+  
+  // Put blended result back
+  finalCtx.putImageData(blendedData, expandedX, expandedY);
   
   // Convert to data URL
   return finalCanvas.toDataURL(CONFIG.IMAGE.OUTPUT_FORMAT, CONFIG.IMAGE.OUTPUT_QUALITY);
+}
+
+/**
+ * Create feathered blend between original and processed image data
+ * @param {ImageData} original - Original image data
+ * @param {ImageData} processed - Processed image data
+ * @param {number} width - Width of the region
+ * @param {number} height - Height of the region
+ * @param {number} featherSize - Size of feather zone in pixels
+ * @param {number} coreOffsetX - X offset to core (non-feathered) region
+ * @param {number} coreOffsetY - Y offset to core (non-feathered) region
+ * @returns {ImageData} - Blended image data
+ */
+function createFeatheredBlend(original, processed, width, height, featherSize, coreOffsetX, coreOffsetY) {
+  const result = new ImageData(width, height);
+  const origData = original.data;
+  const procData = processed.data;
+  const resultData = result.data;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      
+      // Calculate distance from the core region edges
+      const distFromCoreX = x < coreOffsetX ? coreOffsetX - x : 0;
+      const distFromCoreY = y < coreOffsetY ? coreOffsetY - y : 0;
+      const distFromCore = Math.sqrt(distFromCoreX * distFromCoreX + distFromCoreY * distFromCoreY);
+      
+      // Calculate blend alpha (0 = original, 1 = processed)
+      let alpha;
+      if (distFromCore <= 0) {
+        // Inside core region - use processed
+        alpha = 1.0;
+      } else if (distFromCore >= featherSize) {
+        // Outside feather zone - use original
+        alpha = 0.0;
+      } else {
+        // In feather zone - smooth gradient using smoothstep
+        const t = distFromCore / featherSize;
+        // Smoothstep for natural transition: 3t² - 2t³
+        alpha = 1.0 - (t * t * (3.0 - 2.0 * t));
+      }
+      
+      // Blend RGB channels
+      resultData[idx] = Math.round(origData[idx] * (1 - alpha) + procData[idx] * alpha);
+      resultData[idx + 1] = Math.round(origData[idx + 1] * (1 - alpha) + procData[idx + 1] * alpha);
+      resultData[idx + 2] = Math.round(origData[idx + 2] * (1 - alpha) + procData[idx + 2] * alpha);
+      resultData[idx + 3] = 255;  // Full opacity
+    }
+  }
+  
+  return result;
 }
 
 /**

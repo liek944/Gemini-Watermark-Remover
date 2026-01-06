@@ -22,6 +22,9 @@ export const CONFIG = {
     // Extended region for better blending (used in final composition)
     EXTENDED_RATIO: 0.16,
     
+    // Edge feathering for smooth blending (in pixels at original resolution)
+    FEATHER_SIZE: 20,  // 0 = hard edge, higher = smoother blend
+    
     // Position
     POSITION: 'bottom-right'  // Future: support other positions
   },

@@ -723,6 +723,122 @@ body {
   color: var(--color-text-dim);
 }
 
+/* ===== Advanced Settings ===== */
+.advanced-settings {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.advanced-settings[open] {
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  list-style: none;
+}
+
+.settings-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.settings-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.settings-icon {
+  font-size: 1rem;
+}
+
+.toggle-indicator {
+  margin-left: auto;
+  font-size: 0.75rem;
+  transition: transform var(--transition-fast);
+}
+
+.advanced-settings[open] .toggle-indicator {
+  transform: rotate(180deg);
+}
+
+.settings-content {
+  padding: var(--spacing-md);
+  padding-top: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.setting-group {
+  margin-top: var(--spacing-sm);
+}
+
+.setting-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xs);
+}
+
+.setting-value {
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 40px;
+  text-align: right;
+}
+
+.setting-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  margin: var(--spacing-xs) 0;
+}
+
+.setting-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.setting-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+}
+
+.setting-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  border: none;
+}
+
+.setting-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  margin-top: var(--spacing-xs);
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .title {
