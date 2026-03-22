@@ -3,7 +3,7 @@
   "name": "Gemini Watermark Remover",
   "version": "3.0.0",
   "description": "Remove Gemini watermarks locally using AI - 100% privacy-focused, no data sent to servers",
-  "author": "Your Name",
+  "author": "liek944",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

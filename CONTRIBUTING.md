@@ -10,8 +10,8 @@ This project and everyone participating in it is governed by a [Code of Conduct]
 
 ### Reporting Bugs
 
-- **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/your-username/gemini-watermark-remover/issues).
-- If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/your-username/gemini-watermark-remover/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
+- **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/liek944/Gemini-Watermark-Remover/issues).
+- If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/liek944/Gemini-Watermark-Remover/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
 
 ### Suggesting Enhancements
 
@@ -43,7 +43,7 @@ This project and everyone participating in it is governed by a [Code of Conduct]
 ## Development Setup
 
 1.  Fork the repo.
-2.  Clone your fork: `git clone https://github.com/your-username/gemini-watermark-remover.git`
+2.  Clone your fork: `git clone https://github.com/liek944/Gemini-Watermark-Remover.git`
 3.  The project does not have external dependencies to install via npm/yarn for its basic functionality, as it's a vanilla JS project.
 4.  Load the extension in Chrome as described in the `README.md`.
 
