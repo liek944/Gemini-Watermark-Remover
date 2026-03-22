@@ -6,7 +6,7 @@
 export const CONFIG = {
   // Model settings
   MODEL: {
-    PATH: 'src/assets/lama_fp32.onnx',
+    PATH: 'src/assets/lama_fp16.onnx',
     INPUT_SIZE: 512,
     EXECUTION_PROVIDER: 'wasm',
     OPTIMIZATION_LEVEL: 'basic',

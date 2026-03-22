@@ -52,7 +52,7 @@ This project is built with a modern, modular JavaScript architecture to ensure m
 - **`background.js`**: A service worker that handles the extension's icon click.
 - **`src/`**: Contains all the core application logic.
     - **`lib/`**: The ONNX Runtime library and its required WASM files.
-    - **`assets/`**: The `lama_fp32.onnx` AI model file.
+    - **`assets/`**: The `lama_fp16.onnx` AI model file.
     - **`js/`**: The modular JavaScript source code.
         - **`app.js`**: The main application entry point that orchestrates the entire process.
         - **`config.js`**: A centralized configuration file for all settings and constants.

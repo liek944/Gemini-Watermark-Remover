@@ -23,13 +23,13 @@ git clone https://github.com/dinoBOLT/Gemini-Watermark-Remover.git
 
 Since Git LFS is obsolete for this project, you must download the AI model manually. **The extension will not work without this file.**
 
-**Download the model (`lama_fp32.onnx`):**
+**Download the model (`lama_fp16.onnx`):**
 
-👉 [Click here to download from Google Drive](https://drive.google.com/file/d/16cRZWEQyJFecg77ebUBXjFxAik0iFU_C/view?usp=sharing)
+👉 [Click here to download from Google Drive](https://drive.google.com/drive/folders/11Cryjik8XRpcscXv4mZWdrHUmX_XSuHA?usp=sharing)
 
 **Place the file:**
 
-Move the downloaded `lama_fp32.onnx` file into the `src/assets/` folder inside the project directory.
+Move the downloaded `lama_fp16.onnx` file into the `src/assets/` folder inside the project directory.
 
 Your folder structure must look like this:
 
@@ -37,7 +37,7 @@ Your folder structure must look like this:
 gemini-watermark-remover/
 ├── src/
 │   ├── assets/
-│   │   └── lama_fp32.onnx  <-- The file goes here (approx. 200MB)
+│   │   └── lama_fp16.onnx  <-- The file goes here (approx. 100MB)
 │   └── ...
 ├── manifest.json
 └── ...
@@ -74,7 +74,7 @@ gemini-watermark-remover/
 ### Processing fails
 
 - **Error**: "Failed to load AI model" / "File not found"
-  - **Solution**: You missed Step 2. The `lama_fp32.onnx` file is missing from `src/assets/`. Download it from the link above and place it there.
+  - **Solution**: You missed Step 2. The `lama_fp16.onnx` file is missing from `src/assets/`. Download it from the link above and place it there.
 
 - **Error**: "File size exceeds limit"
   - **Solution**: The maximum file size is 50 MB. Try compressing your image first.
@@ -88,7 +88,7 @@ gemini-watermark-remover/
 
 - **Browser**: Google Chrome (version 90+) or Chromium-based browsers
 - **RAM**: At least 4 GB recommended (8 GB for optimal performance)
-- **Storage**: ~250 MB for the extension and model
+- **Storage**: ~150 MB for the extension and model
 - **Internet**: Required to download the initial model file from Hugging Face
 
 ## Privacy Note
