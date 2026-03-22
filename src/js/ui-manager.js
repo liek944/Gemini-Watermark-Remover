@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { formatFileSize } from './utils.js';
+import { formatFileSize, escapeHtml } from './utils.js';
 
 /**
  * UI Manager class
@@ -14,6 +14,7 @@ export class UIManager {
     this.elements = elements;
     this.logger = logger;
     this.currentState = 'idle';  // idle, processing, result
+    this._batchObjectUrls = [];  // Track Blob URLs for cleanup
   }
 
   /**
@@ -42,16 +43,29 @@ export class UIManager {
       this.logger.error(message);
     }
     
-    // Show error in UI
+    // Show error in UI — build with DOM APIs to avoid XSS
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
-    errorDiv.innerHTML = `
-      <div class="error-content">
-        <span class="error-icon">⚠️</span>
-        <span class="error-text">${message}</span>
-        <button class="error-close">×</button>
-      </div>
-    `;
+
+    const content = document.createElement('div');
+    content.className = 'error-content';
+
+    const icon = document.createElement('span');
+    icon.className = 'error-icon';
+    icon.textContent = '⚠️';
+
+    const text = document.createElement('span');
+    text.className = 'error-text';
+    text.textContent = message;  // safe: textContent never parses HTML
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'error-close';
+    closeBtn.textContent = '×';
+
+    content.appendChild(icon);
+    content.appendChild(text);
+    content.appendChild(closeBtn);
+    errorDiv.appendChild(content);
     
     document.body.appendChild(errorDiv);
     
@@ -62,7 +76,7 @@ export class UIManager {
     }, 5000);
     
     // Close button
-    errorDiv.querySelector('.error-close').addEventListener('click', () => {
+    closeBtn.addEventListener('click', () => {
       errorDiv.classList.add('fade-out');
       setTimeout(() => errorDiv.remove(), 300);
     });
@@ -266,10 +280,11 @@ export class UIManager {
     const item = document.createElement('div');
     item.className = 'batch-item queued';
     item.id = `batch-item-${id}`;
+    const safeName = escapeHtml(fileName);
     item.innerHTML = `
-      <img class="batch-item-thumbnail" alt="${fileName}" />
+      <img class="batch-item-thumbnail" alt="${safeName}" />
       <div class="batch-item-info">
-        <div class="batch-item-name">${fileName}</div>
+        <div class="batch-item-name">${safeName}</div>
         <div class="batch-item-size">${formatFileSize(fileSize)}</div>
       </div>
       <div class="batch-item-status"></div>
@@ -366,24 +381,34 @@ export class UIManager {
       resultArea.insertBefore(gallery, actionButtons);
     }
 
-    // Populate gallery
-    gallery.innerHTML = results.map(result => `
-      <div class="batch-result-item" data-id="${result.id}">
-        <img class="batch-result-img" src="${result.dataUrl}" alt="${result.fileName}" />
-        <div class="batch-result-overlay">
-          <div class="batch-result-name">${result.fileName.replace(/\.[^.]+$/, '')}-clean.png</div>
-        </div>
-        <button class="batch-result-download" data-url="${result.dataUrl}" data-name="${result.fileName}">⬇️</button>
-      </div>
-    `).join('');
+    // Store results reference for download-by-index
+    this._batchResultsRef = results;
 
-    // Add click handlers for individual downloads
+    // Populate gallery — escape filenames, use index for download lookup
+    gallery.innerHTML = results.map((result, idx) => {
+      const safeName = escapeHtml(result.fileName);
+      const cleanName = escapeHtml(result.fileName.replace(/\.[^.]+$/, '') + '-clean.png');
+      return `
+        <div class="batch-result-item" data-id="${result.id}">
+          <img class="batch-result-img" src="${result.dataUrl}" alt="${safeName}" />
+          <div class="batch-result-overlay">
+            <div class="batch-result-name">${cleanName}</div>
+          </div>
+          <button class="batch-result-download" data-index="${idx}">⬇️</button>
+        </div>
+      `;
+    }).join('');
+
+    // Add click handlers for individual downloads (look up by index)
     gallery.querySelectorAll('.batch-result-download').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const url = btn.dataset.url;
-        const name = btn.dataset.name.replace(/\.[^.]+$/, '') + '-clean.png';
-        this.downloadImage(url, name);
+        const index = parseInt(btn.dataset.index, 10);
+        const r = this._batchResultsRef[index];
+        if (r) {
+          const name = r.fileName.replace(/\.[^.]+$/, '') + '-clean.png';
+          this.downloadImage(r.dataUrl, name);
+        }
       });
     });
 
@@ -411,6 +436,8 @@ export class UIManager {
   resetBatch() {
     this.showBatchStatus(false);
     this.clearBatchItems();
+    this.revokeObjectUrls();
+    this._batchResultsRef = null;
     
     const downloadAllBtn = document.getElementById('downloadAllBtn');
     if (downloadAllBtn) downloadAllBtn.style.display = 'none';
@@ -422,6 +449,16 @@ export class UIManager {
     const { previewImg, downloadLink } = this.elements;
     if (previewImg) previewImg.style.display = 'block';
     if (downloadLink) downloadLink.style.display = 'inline-flex';
+  }
+
+  /**
+   * Revoke all tracked Blob object URLs to free memory
+   */
+  revokeObjectUrls() {
+    for (const url of this._batchObjectUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this._batchObjectUrls = [];
   }
 }
 

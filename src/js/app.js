@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { validateImageFile, loadImageFromFile, createLogger, formatFileSize } from './utils.js';
+import { validateImageFile, loadImageFromFile, createLogger, formatFileSize, dataUrlToObjectUrl } from './utils.js';
 import { modelManager } from './model-manager.js';
 import { preprocessImage, postprocessImage, composeFinalImage, resizeImageForModel } from './image-processor.js';
 import { UIManager } from './ui-manager.js';
@@ -255,6 +255,9 @@ class Application {
     ctx.drawImage(imageBitmap, 0, 0);
     const originalDataUrl = originalCanvas.toDataURL('image/png');
 
+    // Release ImageBitmap memory
+    imageBitmap.close();
+
     this.logger.info(`Completed: ${file.name}`);
 
     return { dataUrl: finalDataUrl, originalDataUrl };
@@ -265,7 +268,12 @@ class Application {
    * @param {Array} results - Array of successful results
    */
   handleBatchComplete(results) {
-    this.batchResults = results;
+    // Convert data URLs to Blob object URLs for better memory management
+    this.batchResults = results.map(result => {
+      const blobUrl = dataUrlToObjectUrl(result.dataUrl);
+      this.uiManager._batchObjectUrls.push(blobUrl);
+      return { ...result, dataUrl: blobUrl };
+    });
     
     const successCount = results.length;
     const totalCount = this.batchProcessor ? this.batchProcessor.length : 0;
@@ -276,7 +284,7 @@ class Application {
     if (results.length > 0) {
       // Show results gallery
       setTimeout(() => {
-        this.uiManager.showBatchResults(results);
+        this.uiManager.showBatchResults(this.batchResults);
         this.logger.info('All images ready for download');
       }, CONFIG.UI.ANIMATION_DELAY);
     } else {
@@ -443,6 +451,10 @@ class Application {
     ctx.drawImage(imageBitmap, 0, 0);
     const originalDataUrl = originalCanvas.toDataURL('image/png');
 
+    // Release ImageBitmap memory — no longer needed after canvas draw
+    imageBitmap.close();
+    this.currentImageBitmap = null;
+
     this.uiManager.showResult(finalDataUrl, originalDataUrl);
   }
 
@@ -450,6 +462,10 @@ class Application {
    * Handle reset action
    */
   handleReset() {
+    // Close any lingering ImageBitmap
+    if (this.currentImageBitmap) {
+      this.currentImageBitmap.close();
+    }
     this.currentImageBitmap = null;
     this.batchProcessor = null;
     this.batchResults = [];

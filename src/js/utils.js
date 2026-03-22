@@ -91,7 +91,11 @@ export function createLogger(logElement) {
       logElement.style.display = 'block';
       const line = document.createElement('div');
       line.className = `log-line log-${level}`;
-      line.innerHTML = `<span class="log-time">[${timestamp}]</span> ${message}`;
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'log-time';
+      timeSpan.textContent = `[${timestamp}]`;
+      line.appendChild(timeSpan);
+      line.appendChild(document.createTextNode(` ${message}`));
       logElement.appendChild(line);
       logElement.scrollTop = logElement.scrollHeight;
     }
@@ -155,4 +159,30 @@ export function calculateWatermarkRegion(width, height, ratio = null) {
   const y = height - regionHeight;
   
   return { x, y, width: regionWidth, height: regionHeight };
+}
+
+/**
+ * Escape a string for safe insertion into HTML
+ * @param {string} str - The untrusted string
+ * @returns {string} - HTML-escaped string
+ */
+export function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/**
+ * Convert a data URL to a Blob object URL for better memory management.
+ * The caller is responsible for calling URL.revokeObjectURL() when done.
+ * @param {string} dataUrl - The data URL to convert
+ * @returns {string} - A blob: object URL
+ */
+export function dataUrlToObjectUrl(dataUrl) {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/:(.*?);/)[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type: mime }));
 }
