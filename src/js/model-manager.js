@@ -223,10 +223,6 @@ class ModelManager {
               this.modelBuffer = null;
               throw new Error('Downloaded model is invalid (too small or wrong format)');
             }
-            // Persist to IndexedDB in background (fire-and-forget)
-            this._saveToDB(CONFIG.MODEL.PATH, this.modelBuffer)
-              .then(() => console.log('Model cached to IndexedDB'))
-              .catch(err => console.warn('Failed to cache model to IndexedDB:', err));
           }
         }
         
@@ -247,6 +243,12 @@ class ModelManager {
           await this._deleteFromDB(CONFIG.MODEL.PATH).catch(() => {});
           throw sessionError;
         }
+        
+        // Only cache to IndexedDB AFTER successful session creation
+        // (avoids race where fire-and-forget save re-caches bad data after a failure)
+        this._saveToDB(CONFIG.MODEL.PATH, this.modelBuffer)
+          .then(() => console.log('Model cached to IndexedDB'))
+          .catch(err => console.warn('Failed to cache model to IndexedDB:', err));
         
         this.isInitialized = true;
         

@@ -8,7 +8,7 @@ export const CONFIG = {
   MODEL: {
     PATH: 'src/assets/lama_fp32.onnx',
     INPUT_SIZE: 512,
-    EXECUTION_PROVIDERS: ['webgpu', 'webgl', 'wasm'],
+    EXECUTION_PROVIDERS: ['wasm'],
     OPTIMIZATION_LEVEL: 'basic',
     NUM_THREADS: typeof SharedArrayBuffer !== 'undefined'
       ? Math.min(navigator.hardwareConcurrency || 1, 4)
