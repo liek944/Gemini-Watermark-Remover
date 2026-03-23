@@ -10,11 +10,30 @@ import { CONFIG } from './config.js';
  * Singleton pattern to ensure only one model instance
  */
 class ModelManager {
+  /** Minimum valid model size — anything smaller is definitely not a real ONNX model (e.g. an HTML fallback page) */
+  static MIN_MODEL_BYTES = 1024 * 1024; // 1 MB
+
   constructor() {
     this.session = null;
     this.modelBuffer = null;
     this.isInitialized = false;
     this.initializationPromise = null;
+  }
+
+  /**
+   * Validate that a buffer looks like a real ONNX model.
+   * Checks minimum size and that the first byte is 0x08 (protobuf field 1, varint),
+   * which encodes the ir_version field present in every ONNX model.
+   * @param {Uint8Array|ArrayBuffer} buf
+   * @returns {boolean}
+   */
+  _isValidOnnxBuffer(buf) {
+    if (!buf) return false;
+    const len = buf.byteLength ?? buf.length ?? 0;
+    if (len < ModelManager.MIN_MODEL_BYTES) return false;
+    // First byte of a valid ONNX protobuf is 0x08 (field 1, wire type 0 = varint)
+    const view = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    return view[0] === 0x08;
   }
 
   /**
@@ -179,11 +198,15 @@ class ModelManager {
         if (!this.modelBuffer) {
           // Try IndexedDB cache first
           const cached = await this._getFromDB(CONFIG.MODEL.PATH);
-          if (cached) {
+          if (cached && this._isValidOnnxBuffer(cached)) {
             console.log('Loaded model from IndexedDB cache');
             this.modelBuffer = cached;
           } else {
-            // Cache miss — fetch from network
+            if (cached) {
+              console.warn('Corrupt model cache detected — purging and re-fetching');
+              await this._deleteFromDB(CONFIG.MODEL.PATH);
+            }
+            // Cache miss or invalid — fetch from network
             this.modelBuffer = await this.fetchModelWithProgress(
               CONFIG.MODEL.PATH,
               (percent, bytes) => {
@@ -195,6 +218,11 @@ class ModelManager {
                 }
               }
             );
+            // Validate the freshly-downloaded buffer too
+            if (!this._isValidOnnxBuffer(this.modelBuffer)) {
+              this.modelBuffer = null;
+              throw new Error('Downloaded model is invalid (too small or wrong format)');
+            }
             // Persist to IndexedDB in background (fire-and-forget)
             this._saveToDB(CONFIG.MODEL.PATH, this.modelBuffer)
               .then(() => console.log('Model cached to IndexedDB'))
@@ -207,10 +235,18 @@ class ModelManager {
           onProgress(CONFIG.UI.PROGRESS_STEPS.MODEL_INIT, null);
         }
         
-        this.session = await ort.InferenceSession.create(this.modelBuffer, {
-          executionProviders: CONFIG.MODEL.EXECUTION_PROVIDERS,
-          graphOptimizationLevel: CONFIG.MODEL.OPTIMIZATION_LEVEL
-        });
+        try {
+          this.session = await ort.InferenceSession.create(this.modelBuffer, {
+            executionProviders: CONFIG.MODEL.EXECUTION_PROVIDERS,
+            graphOptimizationLevel: CONFIG.MODEL.OPTIMIZATION_LEVEL
+          });
+        } catch (sessionError) {
+          // Auto-recovery: wipe the potentially corrupt cache so a retry can succeed
+          console.error('InferenceSession.create failed — clearing cache for recovery:', sessionError.message);
+          this.modelBuffer = null;
+          await this._deleteFromDB(CONFIG.MODEL.PATH).catch(() => {});
+          throw sessionError;
+        }
         
         this.isInitialized = true;
         
