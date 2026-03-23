@@ -10,9 +10,9 @@ export const CONFIG = {
     INPUT_SIZE: 512,
     EXECUTION_PROVIDERS: ['wasm'],
     OPTIMIZATION_LEVEL: 'basic',
-    NUM_THREADS: typeof SharedArrayBuffer !== 'undefined'
-      ? Math.min(navigator.hardwareConcurrency || 1, 4)
-      : 1
+    // MV3 extensions block blob-URL importScripts inside WASM workers,
+    // so multi-threaded WASM is not possible. Force single-threaded.
+    NUM_THREADS: 1
   },
 
   // Watermark detection settings
