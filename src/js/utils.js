@@ -197,3 +197,20 @@ export function canvasToObjectUrl(canvas, type = 'image/png', quality) {
     );
   });
 }
+
+/**
+ * Render an ImageBitmap to a temporary canvas and return a blob object URL.
+ * The caller is responsible for calling URL.revokeObjectURL() when done.
+ * @param {ImageBitmap} bitmap - The bitmap to convert
+ * @param {string} [type='image/png'] - MIME type for the output image
+ * @param {number} [quality] - Quality for lossy formats (0–1)
+ * @returns {Promise<string>} - A blob: object URL
+ */
+export async function bitmapToObjectUrl(bitmap, type = 'image/png', quality) {
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0);
+  return canvasToObjectUrl(canvas, type, quality);
+}

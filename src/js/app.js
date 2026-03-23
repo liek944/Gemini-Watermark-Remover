@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { validateImageFile, loadImageFromFile, createLogger, formatFileSize, canvasToObjectUrl } from './utils.js';
+import { validateImageFile, loadImageFromFile, createLogger, formatFileSize, bitmapToObjectUrl } from './utils.js';
 import { modelManager } from './model-manager.js';
 import { preprocessImage, postprocessImage, composeFinalImage, resizeImageForModel } from './image-processor.js';
 import { UIManager } from './ui-manager.js';
@@ -248,12 +248,7 @@ class Application {
     const dataUrl = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
 
     // Create original image blob URL
-    const originalCanvas = document.createElement('canvas');
-    originalCanvas.width = imageBitmap.width;
-    originalCanvas.height = imageBitmap.height;
-    const ctx = originalCanvas.getContext('2d');
-    ctx.drawImage(imageBitmap, 0, 0);
-    const originalDataUrl = await canvasToObjectUrl(originalCanvas);
+    const originalDataUrl = await bitmapToObjectUrl(imageBitmap);
 
     // Release ImageBitmap memory
     imageBitmap.close();
@@ -443,12 +438,7 @@ class Application {
     );
 
     // Create original image blob URL for comparison
-    const originalCanvas = document.createElement('canvas');
-    originalCanvas.width = imageBitmap.width;
-    originalCanvas.height = imageBitmap.height;
-    const ctx = originalCanvas.getContext('2d');
-    ctx.drawImage(imageBitmap, 0, 0);
-    const originalUrl = await canvasToObjectUrl(originalCanvas);
+    const originalUrl = await bitmapToObjectUrl(imageBitmap);
 
     // Release ImageBitmap memory — no longer needed after canvas draw
     imageBitmap.close();
