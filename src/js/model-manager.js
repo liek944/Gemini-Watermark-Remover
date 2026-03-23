@@ -118,7 +118,7 @@ class ModelManager {
         }
         
         this.session = await ort.InferenceSession.create(this.modelBuffer, {
-          executionProviders: [CONFIG.MODEL.EXECUTION_PROVIDER],
+          executionProviders: CONFIG.MODEL.EXECUTION_PROVIDERS,
           graphOptimizationLevel: CONFIG.MODEL.OPTIMIZATION_LEVEL
         });
         

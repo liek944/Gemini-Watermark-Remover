@@ -8,7 +8,7 @@ export const CONFIG = {
   MODEL: {
     PATH: 'src/assets/lama_fp16.onnx',
     INPUT_SIZE: 512,
-    EXECUTION_PROVIDER: 'wasm',
+    EXECUTION_PROVIDERS: ['webgpu', 'webgl', 'wasm'],
     OPTIMIZATION_LEVEL: 'basic',
     NUM_THREADS: 1
   },
