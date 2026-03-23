@@ -173,16 +173,27 @@ export function escapeHtml(str) {
 }
 
 /**
- * Convert a data URL to a Blob object URL for better memory management.
+ * Convert a canvas to a Blob object URL for better memory management.
+ * Uses canvas.toBlob() which keeps binary data as-is, avoiding the ~33%
+ * overhead of base64-encoded data URLs.
  * The caller is responsible for calling URL.revokeObjectURL() when done.
- * @param {string} dataUrl - The data URL to convert
- * @returns {string} - A blob: object URL
+ * @param {HTMLCanvasElement} canvas - The canvas to convert
+ * @param {string} [type='image/png'] - MIME type for the output image
+ * @param {number} [quality] - Quality for lossy formats (0–1)
+ * @returns {Promise<string>} - A blob: object URL
  */
-export function dataUrlToObjectUrl(dataUrl) {
-  const [header, base64] = dataUrl.split(',');
-  const mime = header.match(/:(.*?);/)[1];
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return URL.createObjectURL(new Blob([bytes], { type: mime }));
+export function canvasToObjectUrl(canvas, type = 'image/png', quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('canvas.toBlob() returned null'));
+          return;
+        }
+        resolve(URL.createObjectURL(blob));
+      },
+      type,
+      quality
+    );
+  });
 }

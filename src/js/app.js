@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { validateImageFile, loadImageFromFile, createLogger, formatFileSize, dataUrlToObjectUrl } from './utils.js';
+import { validateImageFile, loadImageFromFile, createLogger, formatFileSize, canvasToObjectUrl } from './utils.js';
 import { modelManager } from './model-manager.js';
 import { preprocessImage, postprocessImage, composeFinalImage, resizeImageForModel } from './image-processor.js';
 import { UIManager } from './ui-manager.js';
@@ -219,7 +219,7 @@ class Application {
   /**
    * Process a single image for batch mode (returns result instead of updating UI)
    * @param {File} file - Image file
-   * @returns {Object} - { dataUrl, originalDataUrl }
+   * @returns {Object} - { dataUrl, originalDataUrl } (blob URLs)
    */
   async processSingleImageForBatch(file) {
     // Load image
@@ -244,36 +244,35 @@ class Application {
       CONFIG.MODEL.INPUT_SIZE
     );
 
-    // Compose final image with feathered edges
-    const finalDataUrl = composeFinalImage(imageBitmap, processedImageData, this.featherSize);
+    // Compose final image with feathered edges (returns blob URL)
+    const dataUrl = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
 
-    // Create original data URL
+    // Create original image blob URL
     const originalCanvas = document.createElement('canvas');
     originalCanvas.width = imageBitmap.width;
     originalCanvas.height = imageBitmap.height;
     const ctx = originalCanvas.getContext('2d');
     ctx.drawImage(imageBitmap, 0, 0);
-    const originalDataUrl = originalCanvas.toDataURL('image/png');
+    const originalDataUrl = await canvasToObjectUrl(originalCanvas);
 
     // Release ImageBitmap memory
     imageBitmap.close();
 
     this.logger.info(`Completed: ${file.name}`);
 
-    return { dataUrl: finalDataUrl, originalDataUrl };
+    return { dataUrl, originalDataUrl };
   }
 
   /**
    * Handle batch processing complete
-   * @param {Array} results - Array of successful results
+   * @param {Array} results - Array of successful results (already blob URLs)
    */
   handleBatchComplete(results) {
-    // Convert data URLs to Blob object URLs for better memory management
-    this.batchResults = results.map(result => {
-      const blobUrl = dataUrlToObjectUrl(result.dataUrl);
-      this.uiManager._batchObjectUrls.push(blobUrl);
-      return { ...result, dataUrl: blobUrl };
-    });
+    // Results already contain blob URLs — track them for cleanup on reset
+    this.batchResults = results;
+    for (const result of results) {
+      this.uiManager._batchObjectUrls.push(result.dataUrl);
+    }
     
     const successCount = results.length;
     const totalCount = this.batchProcessor ? this.batchProcessor.length : 0;
@@ -323,14 +322,14 @@ class Application {
     try {
       const zip = new JSZip();
 
-      // Add each result to the ZIP
+      // Add each result to the ZIP (fetch blob URLs to get raw binary)
       for (let i = 0; i < this.batchResults.length; i++) {
         const result = this.batchResults[i];
         const fileName = result.fileName.replace(/\.[^.]+$/, '') + '-clean.png';
         
-        // Convert data URL to base64
-        const base64Data = result.dataUrl.split(',')[1];
-        zip.file(fileName, base64Data, { base64: true });
+        const response = await fetch(result.dataUrl);
+        const blob = await response.blob();
+        zip.file(fileName, blob);
       }
 
       // Generate and download ZIP
@@ -432,8 +431,8 @@ class Application {
       CONFIG.MODEL.INPUT_SIZE
     );
 
-    // Step 6: Compose final image with feathered edges
-    const finalDataUrl = composeFinalImage(imageBitmap, processedImageData, this.featherSize);
+    // Step 6: Compose final image with feathered edges (returns blob URL)
+    const finalUrl = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
     
     this.logger.info('Final image composed at original resolution');
 
@@ -443,19 +442,19 @@ class Application {
       'Complete!'
     );
 
-    // Create original data URL for comparison
+    // Create original image blob URL for comparison
     const originalCanvas = document.createElement('canvas');
     originalCanvas.width = imageBitmap.width;
     originalCanvas.height = imageBitmap.height;
     const ctx = originalCanvas.getContext('2d');
     ctx.drawImage(imageBitmap, 0, 0);
-    const originalDataUrl = originalCanvas.toDataURL('image/png');
+    const originalUrl = await canvasToObjectUrl(originalCanvas);
 
     // Release ImageBitmap memory — no longer needed after canvas draw
     imageBitmap.close();
     this.currentImageBitmap = null;
 
-    this.uiManager.showResult(finalDataUrl, originalDataUrl);
+    this.uiManager.showResult(finalUrl, originalUrl);
   }
 
   /**

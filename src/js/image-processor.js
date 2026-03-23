@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { calculateWatermarkRegion } from './utils.js';
+import { calculateWatermarkRegion, canvasToObjectUrl } from './utils.js';
 
 /**
  * Preprocess image for model input
@@ -96,9 +96,9 @@ export function postprocessImage(outputTensor, width, height) {
  * @param {ImageBitmap} originalBitmap - Original full-resolution image
  * @param {ImageData} processedImageData - Processed 512x512 image data
  * @param {number} featherSize - Override feather size (optional, uses config default)
- * @returns {string} - Data URL of the final composed image
+ * @returns {Promise<string>} - Blob object URL of the final composed image
  */
-export function composeFinalImage(originalBitmap, processedImageData, featherSize = null) {
+export async function composeFinalImage(originalBitmap, processedImageData, featherSize = null) {
   const { width: origWidth, height: origHeight } = originalBitmap;
   const processedSize = CONFIG.MODEL.INPUT_SIZE;
   const feather = featherSize !== null ? featherSize : CONFIG.WATERMARK.FEATHER_SIZE;
@@ -182,8 +182,8 @@ export function composeFinalImage(originalBitmap, processedImageData, featherSiz
   // Put blended result back
   finalCtx.putImageData(blendedData, expandedX, expandedY);
   
-  // Convert to data URL
-  return finalCanvas.toDataURL(CONFIG.IMAGE.OUTPUT_FORMAT, CONFIG.IMAGE.OUTPUT_QUALITY);
+  // Convert to blob URL (avoids ~33% base64 overhead of data URLs)
+  return canvasToObjectUrl(finalCanvas, CONFIG.IMAGE.OUTPUT_FORMAT, CONFIG.IMAGE.OUTPUT_QUALITY);
 }
 
 /**
@@ -256,10 +256,10 @@ export function resizeImageForModel(bitmap) {
 /**
  * Create comparison image (side-by-side before/after)
  * @param {ImageBitmap} originalBitmap - Original image
- * @param {string} processedDataUrl - Processed image data URL
- * @returns {Promise<string>} - Data URL of comparison image
+ * @param {string} processedUrl - Processed image URL (blob or data URL)
+ * @returns {Promise<string>} - Blob object URL of comparison image
  */
-export async function createComparisonImage(originalBitmap, processedDataUrl) {
+export async function createComparisonImage(originalBitmap, processedUrl) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -287,9 +287,9 @@ export async function createComparisonImage(originalBitmap, processedDataUrl) {
       ctx.fillText('Original', 10, 30);
       ctx.fillText('Cleaned', width + 30, 30);
       
-      resolve(canvas.toDataURL('image/png'));
+      canvasToObjectUrl(canvas, 'image/png').then(resolve, reject);
     };
     img.onerror = reject;
-    img.src = processedDataUrl;
+    img.src = processedUrl;
   });
 }
