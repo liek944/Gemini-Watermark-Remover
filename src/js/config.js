@@ -70,5 +70,11 @@ export const CONFIG = {
   ONNX: {
     WASM_PATHS: 'src/lib/',
     PROXY: false
+  },
+
+  // IndexedDB cache settings
+  CACHE: {
+    DB_NAME: 'GeminiWatermarkRemoverCache',
+    STORE_NAME: 'models'
   }
 };

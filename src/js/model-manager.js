@@ -31,6 +31,84 @@ class ModelManager {
   }
 
   /**
+   * Open (or create) the IndexedDB database
+   * @returns {Promise<IDBDatabase>}
+   */
+  _openDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(CONFIG.CACHE.DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(CONFIG.CACHE.STORE_NAME)) {
+          db.createObjectStore(CONFIG.CACHE.STORE_NAME);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Try to load the model from IndexedDB cache
+   * @param {string} key - Cache key (model path)
+   * @returns {Promise<Uint8Array|null>}
+   */
+  async _getFromDB(key) {
+    try {
+      const db = await this._openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(CONFIG.CACHE.STORE_NAME, 'readonly');
+        const store = tx.objectStore(CONFIG.CACHE.STORE_NAME);
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+    } catch {
+      console.warn('IndexedDB read failed, will fetch from network');
+      return null;
+    }
+  }
+
+  /**
+   * Save model buffer to IndexedDB cache
+   * @param {string} key - Cache key (model path)
+   * @param {Uint8Array} data - Model buffer
+   */
+  async _saveToDB(key, data) {
+    try {
+      const db = await this._openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(CONFIG.CACHE.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(CONFIG.CACHE.STORE_NAME);
+        const request = store.put(data, key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (err) {
+      console.warn('IndexedDB write failed:', err);
+    }
+  }
+
+  /**
+   * Delete model from IndexedDB cache
+   * @param {string} key - Cache key (model path)
+   */
+  async _deleteFromDB(key) {
+    try {
+      const db = await this._openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(CONFIG.CACHE.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(CONFIG.CACHE.STORE_NAME);
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (err) {
+      console.warn('IndexedDB delete failed:', err);
+    }
+  }
+
+  /**
    * Fetch model with progress tracking
    * @param {string} url - Model URL
    * @param {Function} onProgress - Progress callback (percent, bytesLoaded)
@@ -97,19 +175,31 @@ class ModelManager {
         // Initialize ONNX Runtime
         this.initializeOnnxRuntime();
         
-        // Load model buffer if not cached
+        // Load model buffer: memory → IndexedDB → network
         if (!this.modelBuffer) {
-          this.modelBuffer = await this.fetchModelWithProgress(
-            CONFIG.MODEL.PATH,
-            (percent, bytes) => {
-              if (onProgress) {
-                const startPercent = CONFIG.UI.PROGRESS_STEPS.MODEL_DOWNLOAD_START;
-                const endPercent = CONFIG.UI.PROGRESS_STEPS.MODEL_DOWNLOAD_END;
-                const progressPercent = startPercent + (percent / 100) * (endPercent - startPercent);
-                onProgress(Math.round(progressPercent), bytes);
+          // Try IndexedDB cache first
+          const cached = await this._getFromDB(CONFIG.MODEL.PATH);
+          if (cached) {
+            console.log('Loaded model from IndexedDB cache');
+            this.modelBuffer = cached;
+          } else {
+            // Cache miss — fetch from network
+            this.modelBuffer = await this.fetchModelWithProgress(
+              CONFIG.MODEL.PATH,
+              (percent, bytes) => {
+                if (onProgress) {
+                  const startPercent = CONFIG.UI.PROGRESS_STEPS.MODEL_DOWNLOAD_START;
+                  const endPercent = CONFIG.UI.PROGRESS_STEPS.MODEL_DOWNLOAD_END;
+                  const progressPercent = startPercent + (percent / 100) * (endPercent - startPercent);
+                  onProgress(Math.round(progressPercent), bytes);
+                }
               }
-            }
-          );
+            );
+            // Persist to IndexedDB in background (fire-and-forget)
+            this._saveToDB(CONFIG.MODEL.PATH, this.modelBuffer)
+              .then(() => console.log('Model cached to IndexedDB'))
+              .catch(err => console.warn('Failed to cache model to IndexedDB:', err));
+          }
         }
         
         // Create inference session
@@ -171,11 +261,13 @@ class ModelManager {
   }
 
   /**
-   * Clear all cached data including model buffer
+   * Clear all cached data including model buffer and IndexedDB
    */
-  clearCache() {
-    this.dispose();
+  async clearCache() {
+    await this.dispose();
     this.modelBuffer = null;
+    await this._deleteFromDB(CONFIG.MODEL.PATH);
+    console.log('Model cache cleared (memory + IndexedDB)');
   }
 
   /**
