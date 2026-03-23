@@ -10,7 +10,9 @@ export const CONFIG = {
     INPUT_SIZE: 512,
     EXECUTION_PROVIDERS: ['webgpu', 'webgl', 'wasm'],
     OPTIMIZATION_LEVEL: 'basic',
-    NUM_THREADS: 1
+    NUM_THREADS: typeof SharedArrayBuffer !== 'undefined'
+      ? Math.min(navigator.hardwareConcurrency || 1, 4)
+      : 1
   },
 
   // Watermark detection settings
