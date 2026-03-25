@@ -93,10 +93,13 @@ export function postprocessImage(outputTensor, width, height) {
  * Compose final image by blending original and processed regions
  * Strategy: Alpha blend with feathered edges for smooth transition
  * 
+ * Also captures the original (unmodified) image as a blob URL from the same
+ * canvas, avoiding a redundant canvas creation for the preview.
+ * 
  * @param {ImageBitmap} originalBitmap - Original full-resolution image
  * @param {ImageData} processedImageData - Processed 512x512 image data
  * @param {number} featherSize - Override feather size (optional, uses config default)
- * @returns {Promise<string>} - Blob object URL of the final composed image
+ * @returns {Promise<{finalUrl: string, originalUrl: string}>} - Blob object URLs
  */
 export async function composeFinalImage(originalBitmap, processedImageData, featherSize = null) {
   const { width: origWidth, height: origHeight } = originalBitmap;
@@ -111,6 +114,9 @@ export async function composeFinalImage(originalBitmap, processedImageData, feat
   
   // Draw original image as base
   finalCtx.drawImage(originalBitmap, 0, 0);
+  
+  // Capture original preview URL from this canvas BEFORE blending
+  const originalUrl = await canvasToObjectUrl(finalCanvas);
   
   // Get original image data for the watermark region (with feather padding)
   const origRegion = calculateWatermarkRegion(
@@ -183,7 +189,9 @@ export async function composeFinalImage(originalBitmap, processedImageData, feat
   finalCtx.putImageData(blendedData, expandedX, expandedY);
   
   // Convert to blob URL (avoids ~33% base64 overhead of data URLs)
-  return canvasToObjectUrl(finalCanvas, CONFIG.IMAGE.OUTPUT_FORMAT, CONFIG.IMAGE.OUTPUT_QUALITY);
+  const finalUrl = await canvasToObjectUrl(finalCanvas, CONFIG.IMAGE.OUTPUT_FORMAT, CONFIG.IMAGE.OUTPUT_QUALITY);
+  
+  return { finalUrl, originalUrl };
 }
 
 /**

@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { validateImageFile, loadImageFromFile, createLogger, formatFileSize, bitmapToObjectUrl } from './utils.js';
+import { validateImageFile, loadImageFromFile, createLogger, formatFileSize } from './utils.js';
 import { modelManager } from './model-manager.js';
 import { preprocessImage, postprocessImage, composeFinalImage, resizeImageForModel } from './image-processor.js';
 import { UIManager } from './ui-manager.js';
@@ -244,11 +244,8 @@ class Application {
       CONFIG.MODEL.INPUT_SIZE
     );
 
-    // Compose final image with feathered edges (returns blob URL)
-    const dataUrl = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
-
-    // Create original image blob URL
-    const originalDataUrl = await bitmapToObjectUrl(imageBitmap);
+    // Compose final image with feathered edges; also captures original preview
+    const { finalUrl: dataUrl, originalUrl: originalDataUrl } = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
 
     // Release ImageBitmap memory
     imageBitmap.close();
@@ -426,8 +423,8 @@ class Application {
       CONFIG.MODEL.INPUT_SIZE
     );
 
-    // Step 6: Compose final image with feathered edges (returns blob URL)
-    const finalUrl = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
+    // Step 6: Compose final image with feathered edges; also captures original preview
+    const { finalUrl, originalUrl } = await composeFinalImage(imageBitmap, processedImageData, this.featherSize);
     
     this.logger.info('Final image composed at original resolution');
 
@@ -436,9 +433,6 @@ class Application {
       CONFIG.UI.PROGRESS_STEPS.COMPLETE,
       'Complete!'
     );
-
-    // Create original image blob URL for comparison
-    const originalUrl = await bitmapToObjectUrl(imageBitmap);
 
     // Release ImageBitmap memory — no longer needed after canvas draw
     imageBitmap.close();
