@@ -184,11 +184,14 @@ class Application {
     for (const file of files) {
       const ids = this.batchProcessor.addFiles([file]);
       if (ids.length > 0) {
-        const validation = validateImageFile(file);
-        if (validation.valid) {
-          this.uiManager.addBatchItem(ids[0], file.name, file.size, file);
-        } else {
-          this.uiManager.addBatchItem(ids[0], file.name, file.size, file);
+        const id = ids[0];
+        this.uiManager.addBatchItem(id, file.name, file.size, file);
+        
+        // Ensure the UI reflects validation errors from BatchProcessor,
+        // because its initial onItemUpdate fires before addBatchItem creates the DOM element
+        const item = this.batchProcessor.queue.find(q => q.id === id);
+        if (item && item.status === BatchItemStatus.ERROR) {
+          this.uiManager.updateBatchItemStatus(id, item.status, { error: item.error });
         }
       }
     }
