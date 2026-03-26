@@ -133,43 +133,67 @@ class ModelManager {
    * @param {Function} onProgress - Progress callback (percent, bytesLoaded)
    * @returns {Promise<Uint8Array>} - Model buffer
    */
-  async fetchModelWithProgress(url, onProgress) {
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch model: ${response.statusText}`);
-    }
-    
-    const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
-    const reader = response.body.getReader();
-    
-    let receivedLength = 0;
-    const chunks = [];
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      
-      if (done) break;
-      
-      chunks.push(value);
-      receivedLength += value.length;
-      
-      // Calculate progress
-      if (contentLength > 0 && onProgress) {
-        const percent = Math.round((receivedLength / contentLength) * 100);
-        onProgress(percent, receivedLength);
+  async fetchModelWithProgress(url, onProgress, maxRetries = 3) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let chunks = [];
+      let receivedLength = 0;
+
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch model: ${response.statusText}`);
+        }
+        
+        const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
+        const reader = response.body.getReader();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) break;
+          
+          chunks.push(value);
+          receivedLength += value.length;
+          
+          // Calculate progress
+          if (contentLength > 0 && onProgress) {
+            const percent = Math.round((receivedLength / contentLength) * 100);
+            onProgress(percent, receivedLength);
+          }
+        }
+        
+        // Combine chunks into single Uint8Array
+        const allChunks = new Uint8Array(receivedLength);
+        let position = 0;
+        for (const chunk of chunks) {
+          allChunks.set(chunk, position);
+          position += chunk.length;
+        }
+        
+        // Clean up component chunks explicitly to hint GC
+        chunks.length = 0; 
+
+        return allChunks;
+      } catch (error) {
+        lastError = error;
+        
+        // Release any partially collected chunks to avoid memory leaks
+        chunks.length = 0;
+        
+        console.warn(`Model fetch attempt ${attempt}/${maxRetries} failed:`, error.message);
+        
+        if (attempt < maxRetries) {
+          const delayMs = attempt * 1000; // 1s, 2s
+          console.log(`Retrying model fetch in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
       }
     }
     
-    // Combine chunks into single Uint8Array
-    const allChunks = new Uint8Array(receivedLength);
-    let position = 0;
-    for (const chunk of chunks) {
-      allChunks.set(chunk, position);
-      position += chunk.length;
-    }
-    
-    return allChunks;
+    throw new Error(`Failed to fetch model after ${maxRetries} attempts. Last error: ${lastError.message}`);
   }
 
   /**
