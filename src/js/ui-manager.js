@@ -122,9 +122,10 @@ export class UIManager {
    * Show result
    * @param {string} dataUrl - Processed image data URL
    * @param {string} originalDataUrl - Original image data URL (optional)
+   * @param {number} elapsedMs - Time taken to process (optional)
    */
-  showResult(dataUrl, originalDataUrl = null) {
-    const { progressContainer, resultArea, previewImg, downloadLink, comparisonContainer } = this.elements;
+  showResult(dataUrl, originalDataUrl = null, elapsedMs = null) {
+    const { progressContainer, resultArea, previewImg, downloadLink, comparisonContainer, processingTimeDisplay } = this.elements;
     
     setTimeout(() => {
       progressContainer.style.display = 'none';
@@ -133,6 +134,13 @@ export class UIManager {
       downloadLink.href = dataUrl;
       downloadLink.download = `gemini-clean-${Date.now()}.png`;
       
+      if (processingTimeDisplay && elapsedMs !== null) {
+        processingTimeDisplay.textContent = `Processing completed in ${(elapsedMs / 1000).toFixed(1)}s`;
+        processingTimeDisplay.style.display = 'block';
+      } else if (processingTimeDisplay) {
+        processingTimeDisplay.style.display = 'none';
+      }
+
       // Setup comparison slider if original is provided
       if (originalDataUrl && comparisonContainer) {
         this.setupComparisonSlider(originalDataUrl, dataUrl);
@@ -335,11 +343,15 @@ export class UIManager {
    * Reset UI to initial state
    */
   reset() {
-    const { dropZone, resultArea, progressContainer, fileInput, comparisonContainer } = this.elements;
+    const { dropZone, resultArea, progressContainer, fileInput, comparisonContainer, processingTimeDisplay } = this.elements;
     
     resultArea.style.display = 'none';
     dropZone.style.display = 'flex';
     progressContainer.style.display = 'none';
+    
+    if (processingTimeDisplay) {
+      processingTimeDisplay.style.display = 'none';
+    }
     
     if (comparisonContainer) {
       comparisonContainer.style.display = 'none';
@@ -548,10 +560,18 @@ export class UIManager {
   /**
    * Show batch results gallery
    * @param {Array} results - Array of { id, fileName, dataUrl }
+   * @param {number} elapsedMs - Time taken to process batch (optional)
    */
-  showBatchResults(results) {
-    const { resultArea, previewImg, downloadLink, comparisonContainer } = this.elements;
+  showBatchResults(results, elapsedMs = null) {
+    const { resultArea, previewImg, downloadLink, comparisonContainer, processingTimeDisplay } = this.elements;
     const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+    if (processingTimeDisplay && elapsedMs !== null) {
+      processingTimeDisplay.textContent = `Batch processing completed in ${(elapsedMs / 1000).toFixed(1)}s`;
+      processingTimeDisplay.style.display = 'block';
+    } else if (processingTimeDisplay) {
+      processingTimeDisplay.style.display = 'none';
+    }
 
     // Hide single image preview, show batch gallery
     if (previewImg) previewImg.style.display = 'none';

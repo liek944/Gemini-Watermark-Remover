@@ -44,7 +44,8 @@ class Application {
       downloadModal: document.getElementById('downloadModal'),
       downloadModalBar: document.getElementById('downloadModalBar'),
       downloadModalText: document.getElementById('downloadModalText'),
-      downloadModalDetail: document.getElementById('downloadModalDetail')
+      downloadModalDetail: document.getElementById('downloadModalDetail'),
+      processingTimeDisplay: document.getElementById('processingTimeDisplay')
     };
 
     // Initialize logger
@@ -235,6 +236,7 @@ class Application {
     }
 
     // Start batch processing
+    this.batchStartTime = performance.now();
     await this.batchProcessor.start();
   }
 
@@ -283,6 +285,7 @@ class Application {
    */
   handleBatchComplete(results) {
     // Results already contain blob URLs — track them for cleanup on reset
+    const elapsedMs = this.batchStartTime ? performance.now() - this.batchStartTime : null;
     this.batchResults = results;
     for (const result of results) {
       this.uiManager._batchObjectUrls.push(result.dataUrl);
@@ -297,7 +300,7 @@ class Application {
     if (results.length > 0) {
       // Show results gallery
       setTimeout(() => {
-        this.uiManager.showBatchResults(this.batchResults);
+        this.uiManager.showBatchResults(this.batchResults, elapsedMs);
         this.logger.info('All images ready for download');
       }, CONFIG.UI.ANIMATION_DELAY);
     } else {
@@ -375,6 +378,7 @@ class Application {
    * @param {File} file - Image file to process
    */
   async processImage(file) {
+    const startTime = performance.now();
     // Step 1: Load image
     this.uiManager.updateProgress(
       CONFIG.UI.PROGRESS_STEPS.FILE_READ,
@@ -457,16 +461,17 @@ class Application {
     this.logger.info('Final image composed at original resolution');
 
     // Step 7: Show result
+    const elapsedMs = performance.now() - startTime;
     this.uiManager.updateProgress(
       CONFIG.UI.PROGRESS_STEPS.COMPLETE,
-      'Complete!'
+      `Complete in ${(elapsedMs / 1000).toFixed(1)}s!`
     );
 
     // Release ImageBitmap memory — no longer needed after canvas draw
     imageBitmap.close();
     this.currentImageBitmap = null;
 
-    this.uiManager.showResult(finalUrl, originalUrl);
+    this.uiManager.showResult(finalUrl, originalUrl, elapsedMs);
   }
 
   /**
