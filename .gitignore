@@ -1,2 +1,26 @@
+# Models
 src/assets/lama_fp32.onnx
 src/assets/lama_fp16.onnx
+
+# Dependencies
+node_modules/
+dist/
+
+# OS generated files
+.DS_Store
+
+# Logs
+*.log
+
+# IDEs and Editors
+.vscode/
+.idea/
+.vs/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Development & Testing
+test-*.html

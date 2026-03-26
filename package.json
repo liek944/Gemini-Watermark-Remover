@@ -1,0 +1,25 @@
+{
+  "name": "gemini-watermark-remover",
+  "version": "1.0.0",
+  "description": "[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/liek944/Gemini-Watermark-Remover) [![Platform](https://img.shields.io/badge/platform-Chrome-brightgreen.svg)](https://www.google.com/chrome/)",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liek944/Gemini-Watermark-Remover.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/liek944/Gemini-Watermark-Remover/issues"
+  },
+  "homepage": "https://github.com/liek944/Gemini-Watermark-Remover#readme",
+  "devDependencies": {
+    "esbuild": "^0.27.4"
+  }
+}
