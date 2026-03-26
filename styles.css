@@ -318,6 +318,7 @@ body {
   position: relative;
   width: 100%;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .comparison-after {
@@ -335,8 +336,9 @@ body {
 }
 
 .comparison-before {
-  width: auto;
-  height: 100%;
+  width: 100cqw;
+  height: auto;
+  max-width: none;
   display: block;
 }
 
