@@ -238,7 +238,7 @@ class ModelManager {
                   const startPercent = CONFIG.UI.PROGRESS_STEPS.MODEL_DOWNLOAD_START;
                   const endPercent = CONFIG.UI.PROGRESS_STEPS.MODEL_DOWNLOAD_END;
                   const progressPercent = startPercent + (percent / 100) * (endPercent - startPercent);
-                  onProgress(Math.round(progressPercent), bytes);
+                  onProgress(Math.round(progressPercent), bytes, percent);
                 }
               }
             );

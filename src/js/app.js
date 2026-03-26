@@ -40,7 +40,11 @@ class Application {
       downloadLink: document.getElementById('downloadLink'),
       resetBtn: document.getElementById('resetBtn'),
       logArea: document.getElementById('logArea'),
-      comparisonContainer: document.getElementById('comparisonContainer')
+      comparisonContainer: document.getElementById('comparisonContainer'),
+      downloadModal: document.getElementById('downloadModal'),
+      downloadModalBar: document.getElementById('downloadModalBar'),
+      downloadModalText: document.getElementById('downloadModalText'),
+      downloadModalDetail: document.getElementById('downloadModalDetail')
     };
 
     // Initialize logger
@@ -141,6 +145,7 @@ class Application {
     try {
       await this.processImage(file);
     } catch (error) {
+      this.uiManager.hideDownloadModal();
       this.logger.error(`Processing failed: ${error.message}`);
       this.uiManager.showError(`${CONFIG.ERRORS.PROCESSING_FAILED}: ${error.message}`);
       this.uiManager.reset();
@@ -202,13 +207,19 @@ class Application {
     // Pre-initialize model before batch processing
     this.logger.info('Pre-loading AI model for batch processing...');
     try {
-      await modelManager.initialize((percent, bytes) => {
+      await modelManager.initialize((percent, bytes, rawPercent) => {
         if (bytes !== null) {
+          if (rawPercent !== undefined) {
+            this.uiManager.showDownloadModal();
+            this.uiManager.updateDownloadModal(rawPercent, `Downloaded: ${formatFileSize(bytes)}`);
+          }
           this.logger.info(`Downloading model (${formatFileSize(bytes)})...`);
         }
       });
+      this.uiManager.hideDownloadModal();
       this.logger.info('AI model ready');
     } catch (error) {
+      this.uiManager.hideDownloadModal();
       this.logger.error(`Model initialization failed: ${error.message}`);
       this.uiManager.showError(CONFIG.ERRORS.MODEL_LOAD_FAILED);
       this.uiManager.reset();
@@ -373,8 +384,12 @@ class Application {
       'Checking AI model...'
     );
 
-    await modelManager.initialize((percent, bytes) => {
+    await modelManager.initialize((percent, bytes, rawPercent) => {
       if (bytes !== null) {
+        if (rawPercent !== undefined) {
+          this.uiManager.showDownloadModal();
+          this.uiManager.updateDownloadModal(rawPercent, `Downloaded: ${formatFileSize(bytes)}`);
+        }
         this.uiManager.updateProgress(
           percent,
           `Downloading model (${formatFileSize(bytes)})...`
@@ -386,6 +401,8 @@ class Application {
         );
       }
     });
+
+    this.uiManager.hideDownloadModal();
 
     // Step 3: Prepare input
     this.uiManager.updateProgress(

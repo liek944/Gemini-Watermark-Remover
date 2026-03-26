@@ -35,6 +35,42 @@ export class UIManager {
   }
 
   /**
+   * Show download modal overlay
+   */
+  showDownloadModal() {
+    const { downloadModal } = this.elements;
+    if (downloadModal) {
+      downloadModal.style.display = 'flex';
+    }
+  }
+
+  /**
+   * Update download modal progress
+   * @param {number} percent - Download percentage (0-100)
+   * @param {string} detailText - Additional detail text (e.g. mb / mb)
+   */
+  updateDownloadModal(percent, detailText) {
+    const { downloadModalBar, downloadModalText, downloadModalDetail } = this.elements;
+    if (downloadModalBar) downloadModalBar.style.width = `${percent}%`;
+    if (downloadModalText) downloadModalText.innerText = `${percent}%`;
+    if (downloadModalDetail && detailText) downloadModalDetail.innerText = detailText;
+  }
+
+  /**
+   * Hide download modal overlay
+   */
+  hideDownloadModal() {
+    const { downloadModal } = this.elements;
+    if (downloadModal) {
+      downloadModal.style.display = 'none';
+      // Reset progress
+      setTimeout(() => {
+        this.updateDownloadModal(0, '');
+      }, 300); // Wait for transition
+    }
+  }
+
+  /**
    * Show error message
    * @param {string} message - Error message
    */
