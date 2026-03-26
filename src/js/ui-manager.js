@@ -154,14 +154,26 @@ export class UIManager {
   setupComparisonSlider(beforeUrl, afterUrl) {
     const { comparisonContainer } = this.elements;
     if (!comparisonContainer) return;
+
+    if (this._comparisonAbortController) {
+      this._comparisonAbortController.abort();
+    }
+    this._comparisonAbortController = new AbortController();
+    const signal = this._comparisonAbortController.signal;
     
     comparisonContainer.style.display = 'block';
     comparisonContainer.innerHTML = `
+      <div class="comparison-hint" style="font-size: 0.85rem; color: var(--color-text-muted); text-align: center; margin-bottom: var(--spacing-sm); display: flex; justify-content: center; gap: 16px;">
+        <span><span style="font-size:1.1em; vertical-align:middle;">🔍</span> Scroll or Pinch to zoom</span>
+        <span><span style="font-size:1.1em; vertical-align:middle;">🖱️</span> Click & drag to pan</span>
+      </div>
       <div class="comparison-wrapper">
-        <div class="comparison-images">
-          <img src="${afterUrl}" class="comparison-after" alt="After">
-          <div class="comparison-before-wrapper" style="width: 50%;">
-            <img src="${beforeUrl}" class="comparison-before" alt="Before">
+        <div class="comparison-images-container" style="overflow: hidden; touch-action: none; position: relative; border-radius: var(--radius-md) var(--radius-md) 0 0;">
+          <div class="comparison-images" style="transform-origin: 0 0; will-change: transform; transition: transform 0.05s linear;">
+            <img src="${afterUrl}" class="comparison-after" alt="After" draggable="false">
+            <div class="comparison-before-wrapper" style="width: 50%;">
+              <img src="${beforeUrl}" class="comparison-before" alt="Before" draggable="false">
+            </div>
           </div>
         </div>
         <input type="range" min="0" max="100" value="50" class="comparison-slider">
@@ -174,11 +186,149 @@ export class UIManager {
     
     const slider = comparisonContainer.querySelector('.comparison-slider');
     const beforeWrapper = comparisonContainer.querySelector('.comparison-before-wrapper');
+    const imagesLayer = comparisonContainer.querySelector('.comparison-images');
+    const viewport = comparisonContainer.querySelector('.comparison-images-container');
     
     slider.addEventListener('input', (e) => {
+      e.stopPropagation();
       const value = e.target.value;
       beforeWrapper.style.width = `${value}%`;
-    });
+    }, { signal });
+
+    // Zoom and Pan State
+    let scale = 1;
+    let pointX = 0;
+    let pointY = 0;
+    let isPointersDown = false;
+    let startX = 0;
+    let startY = 0;
+    let pointers = new Map();
+    let initialPinchDistance = null;
+    let initialScale = 1;
+
+    const MIN_SCALE = 1;
+    const MAX_SCALE = 8;
+
+    const setTransform = () => {
+      if (scale <= 1) {
+        scale = 1;
+        pointX = 0;
+        pointY = 0;
+      } else {
+        const rect = viewport.getBoundingClientRect();
+        const minX = rect.width - rect.width * scale;
+        const minY = rect.height - rect.height * scale;
+        pointX = Math.min(Math.max(pointX, minX), 0);
+        pointY = Math.min(Math.max(pointY, minY), 0);
+      }
+      imagesLayer.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+      viewport.style.cursor = scale > 1 ? (isPointersDown ? 'grabbing' : 'grab') : 'default';
+    };
+
+    const getPinchDistance = () => {
+      const pts = Array.from(pointers.values());
+      if (pts.length < 2) return 0;
+      const dx = pts[0].clientX - pts[1].clientX;
+      const dy = pts[0].clientY - pts[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const getPinchCenter = () => {
+      const pts = Array.from(pointers.values());
+      return {
+        clientX: (pts[0].clientX + pts[1].clientX) / 2,
+        clientY: (pts[0].clientY + pts[1].clientY) / 2
+      };
+    };
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      
+      const rect = viewport.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const xs = (mouseX - pointX) / scale;
+      const ys = (mouseY - pointY) / scale;
+      
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1; 
+      scale = Math.min(Math.max(MIN_SCALE, scale * zoomFactor), MAX_SCALE);
+
+      pointX = mouseX - xs * scale;
+      pointY = mouseY - ys * scale;
+      
+      setTransform();
+    }, { passive: false, signal });
+
+    viewport.addEventListener('pointerdown', (e) => {
+      pointers.set(e.pointerId, e);
+
+      // Only prevent default and capture pointer if we are zooming/panning
+      if (scale > 1 || pointers.size > 1) {
+        e.preventDefault();
+        viewport.setPointerCapture(e.pointerId);
+      }
+
+      if (pointers.size === 1 && scale > 1) {
+        isPointersDown = true;
+        startX = e.clientX - pointX;
+        startY = e.clientY - pointY;
+        setTransform();
+      } else if (pointers.size === 2) {
+        isPointersDown = false;
+        initialPinchDistance = getPinchDistance();
+        initialScale = scale;
+      }
+    }, { passive: false, signal });
+
+    viewport.addEventListener('pointermove', (e) => {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, e);
+
+      if (scale > 1 || pointers.size > 1) {
+        e.preventDefault();
+      }
+
+      if (pointers.size === 1 && isPointersDown) {
+        pointX = e.clientX - startX;
+        pointY = e.clientY - startY;
+        setTransform();
+      } else if (pointers.size === 2 && initialPinchDistance > 0) {
+        const center = getPinchCenter();
+        const rect = viewport.getBoundingClientRect();
+        const centerX = center.clientX - rect.left;
+        const centerY = center.clientY - rect.top;
+
+        const xs = (centerX - pointX) / scale;
+        const ys = (centerY - pointY) / scale;
+
+        const currentDistance = getPinchDistance();
+        const zoomFactor = currentDistance / initialPinchDistance;
+        scale = Math.min(Math.max(MIN_SCALE, initialScale * zoomFactor), MAX_SCALE);
+
+        pointX = centerX - xs * scale;
+        pointY = centerY - ys * scale;
+        
+        setTransform();
+      }
+    }, { passive: false, signal });
+
+    const handlePointerUp = (e) => {
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) initialPinchDistance = null;
+      if (pointers.size === 0) {
+        isPointersDown = false;
+        setTransform();
+      } else if (pointers.size === 1 && scale > 1) {
+        const pt = Array.from(pointers.values())[0];
+        isPointersDown = true;
+        startX = pt.clientX - pointX;
+        startY = pt.clientY - pointY;
+      }
+    };
+
+    viewport.addEventListener('pointerup', handlePointerUp, { signal });
+    viewport.addEventListener('pointercancel', handlePointerUp, { signal });
   }
 
   /**
@@ -194,6 +344,10 @@ export class UIManager {
     if (comparisonContainer) {
       comparisonContainer.style.display = 'none';
       comparisonContainer.innerHTML = '';
+      if (this._comparisonAbortController) {
+        this._comparisonAbortController.abort();
+        this._comparisonAbortController = null;
+      }
     }
     
     fileInput.value = '';
@@ -402,7 +556,13 @@ export class UIManager {
     // Hide single image preview, show batch gallery
     if (previewImg) previewImg.style.display = 'none';
     if (downloadLink) downloadLink.style.display = 'none';
-    if (comparisonContainer) comparisonContainer.style.display = 'none';
+    if (comparisonContainer) {
+      comparisonContainer.style.display = 'none';
+      if (this._comparisonAbortController) {
+        this._comparisonAbortController.abort();
+        this._comparisonAbortController = null;
+      }
+    }
 
     // Show download all button
     if (downloadAllBtn) downloadAllBtn.style.display = 'inline-flex';
