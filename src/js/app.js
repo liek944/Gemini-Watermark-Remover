@@ -64,6 +64,14 @@ class Application {
     // Setup advanced settings
     this.setupAdvancedSettings();
 
+    // Warn before closing if batch processing is active
+    window.addEventListener('beforeunload', (e) => {
+      if (this.batchProcessor && this.batchProcessor.isProcessing) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
     this.logger.info('Ready to process images (batch upload supported)');
   }
 
